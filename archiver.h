@@ -114,6 +114,8 @@ ref * datawriter( Node_t * const node, ref * const tag );
 
 s32 ArchivateDirectory(const s8 * const path, const s8 * const archivefilename);
 
+s32 ArchivateAddDirectory(const s8 * const path, const s8 * const archivefilename, Archive_t * const archive, const s8 doAdd);
+
 // Reader
 
 s32 parsearchive(FILE * const handle, ArchiveContainerEntry_t * const container, s8 * const filepath);

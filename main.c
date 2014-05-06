@@ -174,6 +174,21 @@ void command_e(const s8 * const name0, const u32 id)
 		extractcontainer(archive,id);
 };
 
+void command_c(const s8 * const archivename, Archive_t * const archive)
+{
+	const char * functionname = {"command_c"};
+	const char * errorformat = {"\r\n ~Error: '%s' -> '%s'. "};
+	#define printerror(X) printf(errorformat,functionname,X);
+	
+	/*s32 result = ArchivateDirectory(name1,name0);
+	
+	if(result!=0)
+	{
+		printerror("ArchivateDirectory");
+		return;
+	};*/
+};
+
 s32 parsecmd()
 {
 	const char * functionname = {"parsecmd"};
@@ -199,7 +214,7 @@ s32 parsecmd()
 		if(command==10||command==13)
 			continue;
 		
-		if(command=='e'||command=='i'||command=='a')
+		if(command=='e'||command=='i'||command=='a'||command=='c')
 		{
 			indicator=0;
 			
@@ -276,6 +291,69 @@ s32 parsecmd()
 				u32 eid = atoi(num);
 				
 				command_e(aname,eid);
+				
+				continue;
+			}
+			else if(command=='c')
+			{
+				Archive_t * const archive = newArchive();
+				
+				printf("\r\nCMD:c\"%s\"",aname);
+				
+				u32 dirlen=0;
+				s8 gate=0;
+				s8 dir[MAX_PATH+1];
+				
+				while(fread(&byte,1,1,handle)==1)
+				{
+					bytesread++;
+					
+					if(byte==';')
+						break;
+					
+					if(byte==',')
+						continue;
+					
+					if(byte=='"')
+					{
+						if(gate==0)
+						{
+							dirlen=0;
+							gate=1;
+						}
+						else
+						{
+							
+							printf(",\"%s\"",dir);
+							
+							if(ArchivateAddDirectory(dir,0,archive,1)!=0)
+							{
+								printerror("ArchivateAddDirectory");
+								printf("{'%s'}",dir);
+								goto quit;
+							};
+							
+							gate=0;
+						};
+						continue;
+					};
+					
+					if(dirlen==MAX_PATH)
+						break;
+					
+					dir[dirlen]=byte;
+					dirlen++;
+					dir[dirlen]=0;
+				};
+				
+				printf(";",0);
+				
+				if(ArchivateAddDirectory(0,aname,archive,0)!=0)
+				{
+					printerror("ArchivateAddDirectory");
+					printf("{'%s'}",dir);
+					goto quit;
+				};
 				
 				continue;
 			};

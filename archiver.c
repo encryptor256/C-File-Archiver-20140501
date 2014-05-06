@@ -685,6 +685,144 @@ s32 ArchivateDirectory(const s8 * const path, const s8 * const archivefilename)
 	return -1;
 };
 
+s32 ArchivateAddDirectory(const s8 * const path, const s8 * const archivefilename, Archive_t * const archive, const s8 doAdd)
+{
+	const char * functionname = {"ArchivateAddDirectory"};
+	const char * errorformat = {"\r\n ~Error: '%s' -> '%s'. ",};
+	#define printerror(X) printf(errorformat,functionname,X);
+	
+	if(doAdd==1&&(path==0||strlen(path)<3)|| doAdd==0&&(archivefilename==0||strlen(archivefilename)<3)) 
+	{
+		printerror("Invalid argument");
+		return 0;
+	};
+	
+	ArchiveContainerEntry_t * container = doAdd == 0 ? 0 : scandirectory(path);
+	
+	if(doAdd==0||container!=0)
+	{
+		if(doAdd==0||ArchiveContainerEntry_add(&archive->container,&container->base)==0)
+		{
+			if(doAdd==1)
+				archive->container.entrycount+=1;
+			
+			if(doAdd!=0)
+				return 0;
+			
+			u32 structuresizes = 0;
+			
+			if(Node_travert(&archive->container.base.node,&structuresizes,getstructuresizes)==0)
+			{
+				archive->szheader=structuresizes;
+				
+				u32 ids = 0;
+				
+				if(Node_travert(&archive->container.base.node,&ids,updateids)==0)
+				{
+					u32 dataoffsets = structuresizes;
+					
+					if(Node_travert(&archive->container.base.node,&dataoffsets,updatedataoffsets)==0)
+					{
+						archive->szarchive=dataoffsets;
+						
+						if(Node_travert(&archive->container.base.node,&archive->containercount,getcontainercount)!=0)
+						{
+							printerror("Node_travert - getcontainercount");
+							return -1;
+						};
+						
+						if(Node_travert(&archive->container.base.node,&archive->datacount,getdatacount)!=0)
+						{
+							printerror("Node_travert - getdatacount");
+							return -1;
+						};
+						
+						FILE * handle = fopen(archivefilename,"wb");
+						
+						if(fseek(handle,archive->szarchive,SEEK_SET)!=0)
+						{
+							printerror("Unable to allocate space for acrhive");
+							printf("{'%d'}",archive->szarchive);
+							return -1;
+						};
+						
+						if(fseek(handle,0,SEEK_SET)!=0)
+						{
+							printerror("Unable to reset archive file cursor");
+							return -1;
+						};
+						
+						if(handle!=0)
+						{
+						
+							if(Node_travert(&archive->container.base.node,handle,structurewriter)==0)
+							{
+								if(Node_travert(&archive->container.base.node,handle,datawriter)==0)
+								{
+									
+									fclose(handle);
+									
+									// Check size: Archive vs expected
+									
+									size_t filesize;
+									
+									if(getfilesize(archivefilename,&filesize)!=0)
+									{
+										printerror("getfilesize of archive");
+										return 0;
+									};
+									
+									if(archive->szarchive!=(u32)filesize)
+									{
+										printerror("archive->szarchive!=filesize");
+										return -1;
+									};
+									
+									return 0;
+								}
+								else
+								{
+									printerror("Node_travert - datawriter");
+								};
+							}
+							else
+							{
+								printerror("Node_travert - structurewriter");
+							};
+						}
+						else
+						{
+							printerror("fopen");
+						};
+					}
+					else
+					{
+						printerror("Node_travert - updatedataoffsets");
+					};
+				}
+				else
+				{
+					printerror("Node_travert - updateids");
+				};
+			}
+			else
+			{
+				printerror("Node_travert - getstructuresizes");
+			};
+		}
+		else
+		{
+			printerror("ArchiveContainerEntry_add");
+		};
+	}
+	else
+	{
+		printerror("container==0");	
+	};
+	
+	return -1;
+};
+
 
 s32 parsearchive(FILE * const handle, ArchiveContainerEntry_t * const container, s8 * const filepath)
 {

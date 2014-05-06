@@ -1,3 +1,4 @@
 e"archive.txt",11;
 i"archive.txt","info.txt";
 a"archive.txt","dir";
+c"archive.txt","dir0","dir1","dir2","dir3","dir4";
