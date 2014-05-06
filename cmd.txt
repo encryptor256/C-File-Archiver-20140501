@@ -1,0 +1,3 @@
+e"archive.txt",11;
+i"archive.txt","info.txt";
+a"archive.txt","dir";
