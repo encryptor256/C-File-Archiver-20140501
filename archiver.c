@@ -298,6 +298,37 @@ ref * getstructuresizes( Node_t * const node, ref * const tag )
 	return 0;
 };
 
+
+ref * getcontainercount( Node_t * const node, ref * const tag )
+{
+	if(tag==0)
+	{
+		return (ref *)-1;
+	};
+	
+	u32 * number = tag;
+	
+	if(node->type==archive_entry_container)
+		(*number) += 1;
+	
+	return 0;
+};
+
+ref * getdatacount( Node_t * const node, ref * const tag )
+{
+	if(tag==0)
+	{
+		return (ref *)-1;
+	};
+	
+	u32 * number = tag;
+	
+	if(node->type==archive_entry_data)
+		(*number) += 1;
+	
+	return 0;
+};
+
 ref * updateids( Node_t * const node, ref * const tag )
 {
 	if(tag==0)
@@ -389,6 +420,9 @@ size_t writeArchive(FILE * const handle, Archive_t * const archive)
 	bytesio += fwrite(&archive->version,1,sizeof(u32),handle);
 	bytesio += fwrite(&archive->szheader,1,sizeof(u32),handle);
 	bytesio += fwrite(&archive->szarchive,1,sizeof(u32),handle);
+	
+	bytesio += fwrite(&archive->containercount,1,sizeof(u32),handle);
+	bytesio += fwrite(&archive->datacount,1,sizeof(u32),handle);
 	
 	bytesio += writeArchiveContainerEntry(handle,&archive->container);
 	
@@ -548,7 +582,32 @@ s32 ArchivateDirectory(const s8 * const path, const s8 * const archivefilename)
 						{
 							archive->szarchive=dataoffsets;
 							
+							if(Node_travert(&archive->container.base.node,&archive->containercount,getcontainercount)!=0)
+							{
+								printerror("Node_travert - getcontainercount");
+								return -1;
+							};
+							
+							if(Node_travert(&archive->container.base.node,&archive->datacount,getdatacount)!=0)
+							{
+								printerror("Node_travert - getdatacount");
+								return -1;
+							};
+							
 							FILE * handle = fopen(archivefilename,"wb");
+							
+							if(fseek(handle,archive->szarchive,SEEK_SET)!=0)
+							{
+								printerror("Unable to allocate space for acrhive");
+								printf("{'%d'}",archive->szarchive);
+								return -1;
+							};
+							
+							if(fseek(handle,0,SEEK_SET)!=0)
+							{
+								printerror("Unable to reset archive file cursor");
+								return -1;
+							};
 							
 							if(handle!=0)
 							{
@@ -559,6 +618,22 @@ s32 ArchivateDirectory(const s8 * const path, const s8 * const archivefilename)
 									{
 										
 										fclose(handle);
+										
+										// Check size: Archive vs expected
+										
+										size_t filesize;
+										
+										if(getfilesize(archivefilename,&filesize)!=0)
+										{
+											printerror("getfilesize of archive");
+											return 0;
+										};
+										
+										if(archive->szarchive!=(u32)filesize)
+										{
+											printerror("archive->szarchive!=filesize");
+											return -1;
+										};
 										
 										return 0;
 									}
@@ -789,6 +864,9 @@ Archive_t * readarchive(const s8 * const filepath)
 	
 	bytesio += fread(&archive->szheader,1,sizeof(u32),handle);
 	bytesio += fread(&archive->szarchive,1,sizeof(u32),handle);
+	
+	bytesio += fread(&archive->containercount,1,sizeof(u32),handle);
+	bytesio += fread(&archive->datacount,1,sizeof(u32),handle);
 	
 	bytesio += fread(&archive->container.base.type,1,sizeof(u32),handle);
 	
@@ -1075,6 +1153,8 @@ s32 archiveinfo(Archive_t * const archive, const s8 * const filepathout)
 	
 	fprintf(handle,"\r\n Archive size: '%d' bytes. ",archive->szarchive);
 	fprintf(handle,"\r\n Header size: '%d' bytes. ",archive->szheader);
+	fprintf(handle,"\r\n Container count: '%d'. ",archive->containercount);
+	fprintf(handle,"\r\n Data count: '%d'. ",archive->datacount);
 	fprintf(handle,"\r\n",0);
 	
 	if(Node_travert(&archive->container.base.node,handle,printinfo)!=0)

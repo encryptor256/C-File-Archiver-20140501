@@ -12,7 +12,10 @@
 
 typedef struct tagArchiveBaseEntry_t
 {
-	Node_t node; 
+	//Runtime
+	Node_t node;
+	
+	//Written first
 	u32 type;
 	u32 id;
 	u32 namelen;
@@ -23,9 +26,14 @@ typedef struct tagArchiveBaseEntry_t
 
 typedef struct tagArchiveDataEntry_t
 {
+	//Written first
 	ArchiveBaseEntry_t base;
+	
+	//Written last
 	u32 offset;
 	u32 size;
+	
+	// Runtime
 	u32 pathlen;
 	ref * path;
 }ArchiveDataEntry_t;
@@ -34,9 +42,14 @@ typedef struct tagArchiveDataEntry_t
 
 typedef struct tagArchiveContainerEntry_t
 {
+	//Written first
 	ArchiveBaseEntry_t base;
+	
+	//Written last
 	u32 entrycount;
 	
+	// Runtime
+	u32 size;
 	u32 pathlen;
 	ref * path;
 }ArchiveContainerEntry_t;
@@ -45,17 +58,24 @@ typedef struct tagArchiveContainerEntry_t
 
 typedef struct tagArchive_t
 {
+	//Written last
 	ArchiveContainerEntry_t container;
+	
+	//Written first
 	u32 signature;
 	u32 version;
 	u32 szheader;
 	u32 szarchive;
 	
+	//Written next
+	u32 containercount;
+	u32 datacount;
 	
+	// Runtime
 	FILE * handle;
 }Archive_t;
 
-#define szArchive(X) ( szArchiveContainerEntry(X) + sizeof(u32) * 4 )
+#define szArchive(X) ( szArchiveContainerEntry(X) + sizeof(u32) * 4 + sizeof(u32) * 2 )
 
 Archive_t * newArchive(void);
 ArchiveContainerEntry_t * newArchiveContainerEntry(void);
@@ -76,9 +96,13 @@ ref * Node_travert(Node_t * const node, ref * const tag, ref * (* const callback
 
 ref * getstructuresizes( Node_t * const node, ref * const tag );
 
+ref * getcontainercount( Node_t * const node, ref * const tag );
+ref * getdatacount( Node_t * const node, ref * const tag );
+
 ref * updateids( Node_t * const node, ref * const tag );
 
 ref * updatedataoffsets( Node_t * const node, ref * const tag );
+
 
 size_t writeArchiveBaseEntry(FILE * const handle, ArchiveBaseEntry_t * const entry);
 size_t writeArchiveDataEntry(FILE * const handle, ArchiveDataEntry_t * const entry);
